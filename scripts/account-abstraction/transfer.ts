@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 import { Client, Presets } from "userop";
 import { CLIOpts, config } from "./config";
-import { SmartAccount } from "./builder/smartAccountWithSafe";
+import { SmartAccount } from "./builder/smartAccount";
 
 async function main() {
   // Safe Contract Address
-  const t = "0x94a76F0A60806CAA18643eA4765E4124a49DAB55";
+  const t = "0xA21eFBBB178f4a299985b0D27639D47407653E69";
   const amt = "0";
   const opts: CLIOpts = {
     dryRun: false,

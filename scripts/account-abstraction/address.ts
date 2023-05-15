@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { SmartAccount } from "./builder/smartAccountWithSafe";
+import { SmartAccount } from "./builder/smartAccount";
 import { config } from "./config";
 import fs from "fs";
 

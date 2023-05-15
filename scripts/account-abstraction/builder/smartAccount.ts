@@ -108,4 +108,8 @@ export class SmartAccount extends UserOperationBuilder {
       ])
     );
   }
+
+  getOwners() {
+    return this.proxy.getOwners();
+  }
 }
