@@ -8,20 +8,20 @@ import {
 import {
   EntryPoint,
   EntryPoint__factory,
-  SmartAccountWithSafeFactory,
-  SmartAccountWithSafeFactory__factory,
-  EIP4337Manager as EIP4337ManagerImpl,
-  EIP4337Manager__factory,
+  SmartAccount as SmartAccountImpl,
+  SmartAccount__factory,
+  SmartAccountFactory__factory,
+  SmartAccountFactory,
 } from "../../../typechain";
 import { UserOperationMiddlewareFn } from "userop/dist/types";
 
-export class SmartAccountWithSafe extends UserOperationBuilder {
+export class SmartAccount extends UserOperationBuilder {
   private signer: ethers.Signer;
   private provider: ethers.providers.JsonRpcProvider;
   private entryPoint: EntryPoint;
-  private factory: SmartAccountWithSafeFactory;
+  private factory: SmartAccountFactory;
   private initCode: string;
-  proxy: EIP4337ManagerImpl;
+  proxy: SmartAccountImpl;
 
   private constructor(
     signer: ethers.Signer,
@@ -33,12 +33,9 @@ export class SmartAccountWithSafe extends UserOperationBuilder {
     this.signer = signer;
     this.provider = new ethers.providers.JsonRpcProvider(ERC4337NodeRpc);
     this.entryPoint = EntryPoint__factory.connect(entryPoint, this.provider);
-    this.factory = SmartAccountWithSafeFactory__factory.connect(
-      factory,
-      this.provider
-    );
+    this.factory = SmartAccountFactory__factory.connect(factory, this.provider);
     this.initCode = "0x";
-    this.proxy = EIP4337Manager__factory.connect(
+    this.proxy = SmartAccount__factory.connect(
       ethers.constants.AddressZero,
       this.provider
     );
@@ -55,8 +52,8 @@ export class SmartAccountWithSafe extends UserOperationBuilder {
     entryPoint: string,
     factory: string,
     paymasterMiddleware?: UserOperationMiddlewareFn
-  ): Promise<SmartAccountWithSafe> {
-    const instance = new SmartAccountWithSafe(
+  ): Promise<SmartAccount> {
+    const instance = new SmartAccount(
       signingKey,
       ERC4337NodeRpc,
       entryPoint,
@@ -78,7 +75,7 @@ export class SmartAccountWithSafe extends UserOperationBuilder {
       const addr = error?.errorArgs?.sender;
       if (!addr) throw error;
 
-      instance.proxy = EIP4337Manager__factory.connect(addr, instance.provider);
+      instance.proxy = SmartAccount__factory.connect(addr, instance.provider);
     }
 
     const base = instance

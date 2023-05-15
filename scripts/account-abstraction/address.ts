@@ -1,10 +1,10 @@
 import { ethers } from "ethers";
-import { SmartAccountWithSafe } from "./builder/smartAccountWithSafe";
+import { SmartAccount } from "./builder/smartAccountWithSafe";
 import { config } from "./config";
 import fs from "fs";
 
 async function main() {
-  const simpleAccount = await SmartAccountWithSafe.init(
+  const simpleAccount = await SmartAccount.init(
     new ethers.Wallet(config.signingKey),
     config.rpcUrl,
     config.entryPoint,

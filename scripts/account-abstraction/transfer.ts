@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 import { Client, Presets } from "userop";
 import { CLIOpts, config } from "./config";
-import { SmartAccountWithSafe } from "./builder/smartAccountWithSafe";
+import { SmartAccount } from "./builder/smartAccountWithSafe";
 
 async function main() {
   // Safe Contract Address
-  const t = "0x610CD2541b71a01A26A9E8A337A73522Fd263bfF";
+  const t = "0x94a76F0A60806CAA18643eA4765E4124a49DAB55";
   const amt = "0";
   const opts: CLIOpts = {
     dryRun: false,
@@ -19,7 +19,7 @@ async function main() {
       )
     : undefined;
 
-  const simpleAccount = await SmartAccountWithSafe.init(
+  const simpleAccount = await SmartAccount.init(
     new ethers.Wallet(config.signingKey),
     config.rpcUrl,
     config.entryPoint,
