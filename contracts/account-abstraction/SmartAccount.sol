@@ -7,12 +7,23 @@ import "lib/@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "lib/@account-abstraction/contracts/interfaces/IAccount.sol";
 import "lib/@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import 'lib/@account-abstraction/contracts/utils/Exec.sol';
-import "lib/@safe-contracts/contracts/handler/HandlerContext.sol";
-import "lib/@safe-contracts/contracts/handler/CompatibilityFallbackHandler.sol";
-import "lib/@safe-contracts/contracts/Safe.sol";
+import "lib/@safe-contracts/contracts/common/Singleton.sol";
+import "lib/@safe-contracts/contracts/base/ModuleManager.sol";
+import "lib/@safe-contracts/contracts/base/FallbackManager.sol";
+import "lib/@safe-contracts/contracts/base/GuardManager.sol";
+
+import "./manager/AccessControlManager.sol";
 
 /// @title SmartAccount
-contract SmartAccount is Safe, IAccount {
+// StorageAccessible
+contract SmartAccount is 
+    Singleton,
+    AccessControlManager,
+    ModuleManager,
+    FallbackManager,
+    GuardManager,
+    IAccount
+{
     using ECDSA for bytes32;
     // using UserOperationLib for UserOperation;
     
@@ -24,6 +35,36 @@ contract SmartAccount is Safe, IAccount {
 
     constructor(address entryPoint) {
         _entryPoint = entryPoint;
+    }
+
+    // initialize the singleton
+    // entryPoint()
+    // preUpgradeTo()
+    // getDeposit()
+    // addDeposit()
+    // withdrawDepositTo()
+
+    /**
+     * @notice Sets an initial storage of the Safe contract.
+     * @dev This method can only be called once.
+     *      If a proxy was created without setting up, anyone can call setup and claim the proxy.
+     * @param _owner List of Safe owners.
+     * @param to Contract address for optional delegate call.
+     * @param data Data payload for optional delegate call.
+     * @param fallbackHandler Handler for fallback calls to this contract
+     */
+    function setup(
+        address _owner,
+        address _admin,
+        address to,
+        bytes calldata data,
+        address fallbackHandler
+    ) external {
+        // setupOwners checks if the Threshold is already set, therefore preventing that this method is called twice
+        initializeAccessControl(_owner, _admin);
+        if (fallbackHandler != address(0)) internalSetFallbackHandler(fallbackHandler);
+        // As setupOwners can only be called if the contract has not been initialized we don't need a check for setupModules
+        setupModules(to, data);
     }
 
     /**
@@ -45,11 +86,11 @@ contract SmartAccount is Safe, IAccount {
         require(msgSender == _entryPoint, 'account: not from entrypoint');
 
         // from EIP4337Manager.sol in account-abstraction v0.6
-        Safe pThis = Safe(payable(address(this)));
+        // Safe pThis = Safe(payable(address(this)));
         bytes32 hash = userOpHash.toEthSignedMessageHash();
         address recovered = hash.recover(userOp.signature);
-        require(threshold == 1, 'account: only threshold 1');
-        if (!pThis.isOwner(recovered)) {
+        // require(threshold == 1, 'account: only threshold 1');
+        if (!isOwner(recovered)) {
             validationData = SIG_VALIDATION_FAILED;
         }
 
