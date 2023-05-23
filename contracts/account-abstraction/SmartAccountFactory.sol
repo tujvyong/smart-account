@@ -3,8 +3,9 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "lib/@safe-contracts/contracts/proxies/SafeProxyFactory.sol";
-import "lib/@safe-contracts/contracts/Safe.sol";
 import "lib/@safe-contracts/contracts/handler/TokenCallbackHandler.sol";
+
+import "./SmartAccount.sol";
 
 /**
  * A wrapper factory contract to deploy GnosisSafe as an ERC-4337 account contract.
@@ -16,12 +17,15 @@ contract SmartAccountFactory {
     address public immutable safeSingleton;
     TokenCallbackHandler public immutable defaultCallback;
 
+    address public immutable admin;
+
     event AccountCreated(address indexed account, address indexed owner, uint salt); 
 
-    constructor(SafeProxyFactory _proxyFactory, address _safeSingleton) {
+    constructor(SafeProxyFactory _proxyFactory, address _safeSingleton, address _admin) {
         proxyFactory = _proxyFactory;
         safeSingleton = _safeSingleton;
         defaultCallback = new TokenCallbackHandler();
+        admin = _admin;
     }
 
     function createAccount(address owner,uint256 salt) public returns (address account) {
@@ -36,17 +40,12 @@ contract SmartAccountFactory {
     }
 
     function getInitializer(address owner) internal view returns (bytes memory) {
-        address[] memory owners = new address[](1);
-        owners[0] = owner;
-        uint threshold = 1;
-
-        return abi.encodeCall(Safe.setup, (
-            owners,
-            threshold,
+        return abi.encodeCall(SmartAccount.setup, (
+            owner,
+            admin,
             address(0),
             "",
-            address(defaultCallback),
-            address(0), 0, payable(0) //no payment receiver
+            address(defaultCallback)
         ));
     }
 
