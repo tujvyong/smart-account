@@ -13,7 +13,8 @@ import "lib/@safe-contracts/contracts/common/SelfAuthorized.sol";
  *      is more efficient than using a dynamic array.
  */
 abstract contract AccessControlManager is Context, IAccessControl, SelfAuthorized {
-    event ChangedOwner(address indexed owner);
+    event ChangedOwner(address indexed previousOwner, address indexed newOwner);
+    event AllowedTransferOwnership(bool allowed);
 
     /*
     
@@ -29,6 +30,7 @@ abstract contract AccessControlManager is Context, IAccessControl, SelfAuthorize
 
     struct Layout {
         address owner;
+        bool allowedTransferOwnership;
         mapping(bytes32 => RoleData) roles;
     }
 
@@ -57,21 +59,46 @@ abstract contract AccessControlManager is Context, IAccessControl, SelfAuthorize
     }
 
     /**
-     * @notice Returns if `owner` is an owner of the Safe.
-     * @return Boolean if owner is an owner of the Safe.
+     * @dev Throws if called by any account other than the owner.
      */
-    function isOwner(address _owner) public view returns (bool) {
-        Layout storage l = getAccessControl();
-        return l.owner == _owner;
+    modifier onlyOwner() {
+        _checkOwner();
+        _;
     }
 
-    // owner を変更できるのは admin
-    // TODO: admin は owner の許可を得て、owner を変更できる
-    function transferOwnership(address _newOwner) public onlyRole(getRoleAdmin(DEFAULT_ADMIN_ROLE)) {
-        require(_newOwner != address(0), "AccessControl: new owner is the zero address");
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
         Layout storage l = getAccessControl();
+        return l.owner;
+    }
+
+    /**
+     * @dev Throws if the sender is not the owner.
+     */
+    function _checkOwner() internal view virtual {
+        require(owner() == msg.sender, "Ownable: caller is not the owner");
+    }
+
+    function isOwner(address _owner) public view returns (bool) {
+        return owner() == _owner;
+    }
+    
+    function transferOwnership(address _newOwner) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        Layout storage l = getAccessControl();
+        require(_newOwner != address(0), "AccessControl: new owner is the zero address");
+        require(l.allowedTransferOwnership, "AccessControl: transfer of ownership is not allowed");
+
+        address previousOwner = l.owner;
         l.owner = _newOwner;
-        emit ChangedOwner(_newOwner);
+        l.allowedTransferOwnership = false;
+        emit ChangedOwner(previousOwner, _newOwner);
+    }
+
+    function allowTransferOwnership() public onlyOwner {
+        Layout storage l = getAccessControl();
+        l.allowedTransferOwnership = true;
     }
 
     /*

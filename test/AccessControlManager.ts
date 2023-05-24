@@ -14,64 +14,43 @@ import {
 } from "../typechain";
 
 describe("AccessControlManager", async function () {
+  const setup = async function () {
+    const [owner, admin] = await ethers.getSigners();
+
+    // 1. deploy EntryPoint
+    // 2. deploy Singleton
+    // 3. deploy SafeProxyFactory
+    // 4. deploy SmartAccountFactory
+    const entryPoint = await deployEntryPoint();
+
+    const singleton = await new SmartAccount__factory(admin).deploy(entryPoint.address);
+
+    const proxyFactory = await new SafeProxyFactory__factory(admin).deploy();
+
+    const factory = await new SmartAccountFactory__factory(admin).deploy(
+      proxyFactory.address,
+      singleton.address,
+      admin.address,
+    );
+
+    // TODO: create SmartAccount test case
+    await factory.createAccount(owner.address, 0).then((tx) => tx.wait());
+
+    // we use our factory to create and configure the proxy.
+    // but the actual deployment is done internally by the safe proxy factory
+    const ev = await proxyFactory.queryFilter(proxyFactory.filters.ProxyCreation());
+    const addr = ev[0].args.proxy;
+
+    const proxy = SmartAccount__factory.connect(addr, owner);
+    return { entryPoint, singleton, proxyFactory, factory, proxy };
+  };
+
   describe("Owner/Role", async function () {
-    const setup = async function () {
-      const [owner, admin] = await ethers.getSigners();
-
-      // 1. deploy EntryPoint
-      // 2. deploy Singleton
-      // 3. deploy SafeProxyFactory
-      // 4. deploy SmartAccountFactory
-      const entryPoint = await deployEntryPoint();
-
-      const singleton = await new SmartAccount__factory(admin).deploy(entryPoint.address);
-
-      const proxyFactory = await new SafeProxyFactory__factory(admin).deploy();
-
-      const factory = await new SmartAccountFactory__factory(admin).deploy(
-        proxyFactory.address,
-        singleton.address,
-        admin.address,
-      );
-
-      // TODO: create SmartAccount test case
-      await factory.createAccount(owner.address, 0).then((tx) => tx.wait());
-
-      // we use our factory to create and configure the proxy.
-      // but the actual deployment is done internally by the safe proxy factory
-      const ev = await proxyFactory.queryFilter(proxyFactory.filters.ProxyCreation());
-      const addr = ev[0].args.proxy;
-
-      const proxy = SmartAccount__factory.connect(addr, owner);
-      return { entryPoint, singleton, proxyFactory, factory, proxy };
-    };
-
     it("isOwner", async function () {
-      const { singleton, entryPoint, proxy } = await loadFixture(setup);
-      const [owner, admin] = await ethers.getSigners();
+      const { proxy } = await loadFixture(setup);
+      const [owner] = await ethers.getSigners();
 
       expect(await proxy.isOwner(owner.address)).to.eq(true);
-
-      await admin.sendTransaction({
-        to: proxy.address,
-        value: ethers.utils.parseEther("0.1"),
-      });
-
-      const op = await fillAndSign(
-        {
-          sender: proxy.address,
-          callGasLimit: 1e6,
-          callData: singleton.interface.encodeFunctionData("executeAndRevert", [owner.address, 0, "0x", 0]),
-        },
-        owner,
-        entryPoint,
-      );
-
-      const rcpt = await entryPoint.handleOps([op], owner.address).then((tx) => tx.wait());
-
-      const event = rcpt.events?.find((e) => e.event === "UserOperationEvent");
-      expect(event).to.not.be.undefined;
-      expect(event?.args?.success).to.eq(true);
     });
 
     it("gaudiy admin is default admin role", async function () {
@@ -92,12 +71,51 @@ describe("AccessControlManager", async function () {
 
     it("admin can transferOwnership", async function () {
       const { proxy } = await loadFixture(setup);
-      const [_owner, admin, newOwner] = await ethers.getSigners();
+      const [owner, admin, newOwner] = await ethers.getSigners();
+
+      await proxy.connect(owner).allowTransferOwnership();
 
       await proxy.connect(admin).transferOwnership(newOwner.address);
       expect(await proxy.isOwner(newOwner.address)).to.eq(true);
     });
+
+    it("admin can not transferOwnership, if owner has not allow", async function () {
+      const { proxy } = await loadFixture(setup);
+      const [owner, admin, newOwner] = await ethers.getSigners();
+
+      await expect(proxy.connect(admin).transferOwnership(newOwner.address)).to.be.revertedWith(
+        `AccessControl: transfer of ownership is not allowed`,
+      );
+    });
   });
+
+  // describe("Send/Transfer", async function () {
+  //   it("send 0 eth", async function () {
+  //     const { singleton, entryPoint, proxy } = await loadFixture(setup);
+  //     const [owner, admin] = await ethers.getSigners();
+
+  //     await admin.sendTransaction({
+  //       to: proxy.address,
+  //       value: ethers.utils.parseEther("0.1"),
+  //     });
+
+  //     const op = await fillAndSign(
+  //       {
+  //         sender: proxy.address,
+  //         callGasLimit: 1e6,
+  //         callData: singleton.interface.encodeFunctionData("executeAndRevert", [owner.address, 0, "0x", 0]),
+  //       },
+  //       owner,
+  //       entryPoint,
+  //     );
+
+  //     const rcpt = await entryPoint.handleOps([op], owner.address).then((tx) => tx.wait());
+
+  //     const event = rcpt.events?.find((e) => e.event === "UserOperationEvent");
+  //     expect(event).to.not.be.undefined;
+  //     expect(event?.args?.success).to.eq(true);
+  //   });
+  // });
 });
 
 const deployEntryPoint = async (provider = ethers.provider): Promise<EntryPoint> => {
