@@ -1,8 +1,5 @@
 import "dotenv/config";
-import {
-  DefenderRelayProvider,
-  DefenderRelaySigner,
-} from "defender-relay-client/lib/ethers";
+import { DefenderRelayProvider, DefenderRelaySigner } from "defender-relay-client/lib/ethers";
 import { ethers } from "hardhat";
 
 /**
@@ -13,13 +10,11 @@ const SAFE_PROXY_FACTORY_ADDRESS = "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67";
 /**
  * Custom Smart Account Singleton address.
  */
-const SAFE_SINGLETON_ADDRESS = "0x7f328F4Ca30444B743FaEc26d71aaa9F5C422b95";
+const SAFE_SINGLETON_ADDRESS = "0x2b00998C8c21d4398DA182BC0bEe3f2607F19275";
 
 async function main() {
   if (!process.env.RELAYER_API_KEY || !process.env.RELAYER_API_SECRET) {
-    throw new Error(
-      "Please set RELAYER_API_KEY and RELAYER_API_SECRET in your .env file"
-    );
+    throw new Error("Please set RELAYER_API_KEY and RELAYER_API_SECRET in your .env file");
   }
 
   const credentials = {
@@ -28,7 +23,7 @@ async function main() {
   };
   const provider = new DefenderRelayProvider(credentials);
   const relaySigner = new DefenderRelaySigner(credentials, provider, {
-    speed: "fast",
+    speed: "average",
   });
 
   const factory = await ethers.getContractFactory("SmartAccountFactory");
@@ -36,7 +31,9 @@ async function main() {
 
   const ret = await connected.deploy(
     SAFE_PROXY_FACTORY_ADDRESS,
-    SAFE_SINGLETON_ADDRESS
+    SAFE_SINGLETON_ADDRESS,
+    // admin
+    "0x29573af24dab9dfe3119df08da8a0eeaa804e1ab",
   );
   console.log("==SmartAccountFactory addr=", ret.address);
 }

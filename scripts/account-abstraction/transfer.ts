@@ -5,7 +5,7 @@ import { SmartAccount } from "./builder/smartAccount";
 
 async function main() {
   // Safe Contract Address
-  const t = "0xA21eFBBB178f4a299985b0D27639D47407653E69";
+  const t = "0x4b8B50d7C1aC161CC50e95Ae01640b7C50Fb9dC2";
   const amt = "0";
   const opts: CLIOpts = {
     dryRun: false,

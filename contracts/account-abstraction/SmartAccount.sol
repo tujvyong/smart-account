@@ -14,6 +14,8 @@ import "lib/@safe-contracts/contracts/base/GuardManager.sol";
 
 import "./manager/AccessControlManager.sol";
 
+import "hardhat/console.sol";
+
 /// @title SmartAccount
 // StorageAccessible
 contract SmartAccount is 
@@ -31,10 +33,10 @@ contract SmartAccount is
     // equivalent to _packValidationData(true,0,0);
     uint256 internal constant SIG_VALIDATION_FAILED = 1;
 
-    address public _entryPoint;
+    address public immutable entryPoint;
 
-    constructor(address entryPoint) {
-        _entryPoint = entryPoint;
+    constructor(address _entryPoint) {
+        entryPoint = _entryPoint;
     }
 
     // initialize the singleton
@@ -67,14 +69,8 @@ contract SmartAccount is
         setupModules(to, data);
     }
 
-    /**
-     * Helper for wallet to get the next nonce.
-     * 
-     * from EIP4337Manager.sol in account-abstraction v0.6
-     */
-    function getNonce() public view returns (uint256) {
-        return IEntryPoint(_entryPoint).getNonce(address(this), 0);
-    }
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 
     // from EIP4337Manager.sol in account-abstraction v0.6
     function validateUserOp(
@@ -82,8 +78,12 @@ contract SmartAccount is
         bytes32 userOpHash,
         uint256 missingAccountFunds
     ) external override returns (uint256 validationData) {
-        address msgSender = address(bytes20(msg.data[msg.data.length - 20:]));
-        require(msgSender == _entryPoint, 'account: not from entrypoint');
+        console.log(
+            "[validateUserOp] msg.sender %s = entrypoint %s",
+            msg.sender,
+            entryPoint
+        );
+        require(msg.sender == entryPoint, 'account: not from entrypoint');
 
         // from EIP4337Manager.sol in account-abstraction v0.6
         // Safe pThis = Safe(payable(address(this)));
@@ -113,8 +113,7 @@ contract SmartAccount is
      * which the frontend/client uses to capture the reason for the failure.
      */
     function executeAndRevert(address to, uint256 value, bytes memory data, Enum.Operation operation) external {
-        address msgSender = address(bytes20(msg.data[msg.data.length - 20:]));
-        require(msgSender == _entryPoint, 'account: not from EntryPoint');
+        require(msg.sender == entryPoint, 'account: not from EntryPoint');
 
         // from EIP4337Manager.sol in account-abstraction v0.6
         bool success = execute(to, value, data, operation, type(uint256).max);
@@ -129,13 +128,5 @@ contract SmartAccount is
             }
             revert(abi.decode(returnData, (string)));
         }
-    }
-
-    // from CandideWallet.sol in CandideWalletContracts
-    /// @dev There should be only one verified entrypoint per chain
-    /// @dev so this function should only be used if there is a problem with
-    /// @dev the main entrypoint
-    function replaceEntrypoint(address newEntrypoint) public authorized {
-        _entryPoint = newEntrypoint;
     }
 }

@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "dotenv/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-dependency-compiler";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -26,6 +27,10 @@ const config: HardhatUserConfig = {
       goerli: process.env.ETHERSCAN_API_KEY ?? "",
       polygonMumbai: process.env.POLYGONSCAN_API_KEY ?? "",
     },
+  },
+  // import EntryPoint.sol for testing
+  dependencyCompiler: {
+    paths: ["lib/@account-abstraction/contracts/core/EntryPoint.sol"],
   },
 };
 
